@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}OAuth Error — Digest{% endblock %}
+
+{% block content %}
+<h1>Connection Failed</h1>
+<div class="card">
+  <div class="flash error" style="margin-bottom:16px">{{ error }}</div>
+  <a href="/connect/{{ provider }}" class="btn btn-secondary">← Back</a>
+</div>
+{% endblock %}

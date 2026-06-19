@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Connect {{ provider_label }} — Digest{% endblock %}
+
+{% block content %}
+<h1>Connect {{ provider_label }}</h1>
+
+{% if not configured %}
+<div class="card">
+  <p class="text-muted" style="margin-bottom:14px">
+    {{ provider_label }} credentials are not configured yet.
+  </p>
+  <a href="/settings" class="btn btn-primary">Go to Settings</a>
+</div>
+{% else %}
+
+<div class="card">
+  <div style="margin-bottom:16px">
+    {% if connection %}
+    <div class="row" style="margin-bottom:12px">
+      <span class="status"><span class="dot dot-green"></span> Connected</span>
+      <span class="text-muted">{{ connection.display_name }}</span>
+    </div>
+    <form method="post" action="/api/connections/{{ provider }}/disconnect" style="margin:0">
+      <button type="submit" class="btn btn-danger">Disconnect</button>
+    </form>
+    {% else %}
+    <p class="text-muted" style="margin-bottom:14px">
+      No active {{ provider_label }} connection. Click below to start the OAuth flow.
+    </p>
+    <a href="/oauth/{{ provider }}/authorize" class="btn btn-primary">Connect {{ provider_label }}</a>
+    {% endif %}
+  </div>
+</div>
+
+
+{% endif %}
+{% endblock %}
