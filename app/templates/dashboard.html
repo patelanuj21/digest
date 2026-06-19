@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Digest{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<!-- Intro -->
+<div class="card" style="margin-bottom:24px">
+  <p style="font-size:13px;line-height:1.7;color:var(--text-muted)">
+    <strong style="color:var(--text)">Digest</strong> connects Linear and Slack.
+    It pulls issues from a Linear team, builds an untriaged + assignment summary digest, and posts it to a Slack channel on demand.
+    Configure OAuth credentials in <a href="/settings" style="color:var(--accent)">Settings</a>,
+    connect both services via their respective OAuth flows, then trigger the workflow via
+    <code>POST /api/workflows/linear-slack-digest</code> or the <a href="/docs" style="color:var(--accent)">API docs</a>.
+  </p>
+</div>
+
+<!-- Connections -->
+<div class="section-label">Connections</div>
+
+<div class="card" style="margin-bottom:10px">
+  <div style="display:flex;align-items:center;gap:12px">
+    <strong style="min-width:60px;font-size:13px">Linear</strong>
+    {% if linear_connected %}
+      <span class="status"><span class="dot dot-green"></span> Connected</span>
+      {% if linear_name %}<span class="text-muted" style="font-size:12px">{{ linear_name }}</span>{% endif %}
+      <span style="margin-left:auto;display:flex;align-items:center;gap:12px">
+        {% if linear_connected_at %}<span class="text-muted" style="font-size:12px">Since {{ linear_connected_at }}</span>{% endif %}
+        <a href="/connect/linear" class="btn btn-secondary btn-sm">Manage</a>
+      </span>
+    {% else %}
+      <span class="status"><span class="dot dot-red"></span> Not connected</span>
+      <a href="/connect/linear" class="btn btn-primary btn-sm" style="margin-left:auto">Connect</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:24px">
+  <div style="display:flex;align-items:center;gap:12px">
+    <strong style="min-width:60px;font-size:13px">Slack</strong>
+    {% if slack_connected %}
+      <span class="status"><span class="dot dot-green"></span> Connected</span>
+      {% if slack_name %}<span class="text-muted" style="font-size:12px">{{ slack_name }}</span>{% endif %}
+      <span style="margin-left:auto;display:flex;align-items:center;gap:12px">
+        {% if slack_connected_at %}<span class="text-muted" style="font-size:12px">Since {{ slack_connected_at }}</span>{% endif %}
+        <a href="/connect/slack" class="btn btn-secondary btn-sm">Manage</a>
+      </span>
+    {% else %}
+      <span class="status"><span class="dot dot-red"></span> Not connected</span>
+      <a href="/connect/slack" class="btn btn-primary btn-sm" style="margin-left:auto">Connect</a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Setup steps if not fully connected -->
+{% if not linear_connected or not slack_connected %}
+<div class="section-label mt-24">Getting Started</div>
+<div class="card">
+  <ol style="padding-left:18px;line-height:2.2;font-size:13px;color:var(--text-muted)">
+    <li><a href="/settings" style="color:var(--accent)">Configure OAuth credentials</a> in Settings</li>
+    <li>Connect <a href="/connect/linear" style="color:var(--accent)">Linear</a></li>
+    <li>Connect <a href="/connect/slack" style="color:var(--accent)">Slack</a></li>
+    <li>Trigger your first digest via <code>POST /api/workflows/linear-slack-digest</code> or <a href="/docs" style="color:var(--accent)">API docs</a></li>
+  </ol>
+</div>
+{% endif %}
+
+{% endblock %}

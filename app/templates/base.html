@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Digest{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<nav>
+  <div class="brand">Digest</div>
+  <ul>
+    <li><a href="/" {% if active_page == 'dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+    <li><a href="/settings" {% if active_page == 'settings' %}class="active"{% endif %}>Settings</a></li>
+    <li><a href="/docs" target="_blank">API Docs</a></li>
+  </ul>
+</nav>
+
+<main>
+  {% if flash_success %}
+  <div class="flash success" id="flash-msg">{{ flash_success }}</div>
+  {% endif %}
+  {% if flash_error %}
+  <div class="flash error" id="flash-msg">{{ flash_error }}</div>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<script>
+  const flash = document.getElementById('flash-msg');
+  if (flash) setTimeout(() => flash.style.display = 'none', 4000);
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

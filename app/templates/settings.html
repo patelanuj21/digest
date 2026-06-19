@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Settings — Digest{% endblock %}
+
+{% block content %}
+<h1>Settings</h1>
+
+<form id="settings-form">
+
+  <div class="section-label">App</div>
+  <div class="card">
+    <div class="field">
+      <label for="base_url">Base URL</label>
+      <input type="text" id="base_url" name="base_url"
+             value=""
+             placeholder="Detecting…" />
+      <div class="hint">The public URL of this app. Used to generate OAuth redirect URLs. Defaults to current browser origin.</div>
+      {% if errors.base_url %}<div class="field-error">{{ errors.base_url }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="section-label mt-16">Linear OAuth</div>
+  <div class="card">
+    <div class="field">
+      <label for="linear_client_id">Client ID</label>
+      <input type="text" id="linear_client_id" name="linear_client_id"
+             value="{{ settings.linear_client_id or '' }}" />
+      {% if errors.linear_client_id %}<div class="field-error">{{ errors.linear_client_id }}</div>{% endif %}
+    </div>
+    <div class="field">
+      <label for="linear_client_secret">Client Secret</label>
+      <input type="password" id="linear_client_secret" name="linear_client_secret"
+             placeholder="{% if settings.linear_client_secret_configured %}••••••••••••{% else %}Paste secret{% endif %}" />
+      <div class="hint">Leave blank to keep the existing value.</div>
+      {% if errors.linear_client_secret %}<div class="field-error">{{ errors.linear_client_secret }}</div>{% endif %}
+    </div>
+    <div class="field">
+      <label>Redirect URL <span style="font-size:11px;color:var(--text-muted)">(register this in your Linear OAuth app)</span></label>
+      <div class="url-row">
+        <span class="mono" id="linear-redirect-url">—</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyRedirect('linear-redirect-url', this)">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label mt-16">Slack OAuth</div>
+  <div class="card">
+    <div class="field">
+      <label for="slack_client_id">Client ID</label>
+      <input type="text" id="slack_client_id" name="slack_client_id"
+             value="{{ settings.slack_client_id or '' }}" />
+      {% if errors.slack_client_id %}<div class="field-error">{{ errors.slack_client_id }}</div>{% endif %}
+    </div>
+    <div class="field">
+      <label for="slack_client_secret">Client Secret</label>
+      <input type="password" id="slack_client_secret" name="slack_client_secret"
+             placeholder="{% if settings.slack_client_secret_configured %}••••••••••••{% else %}Paste secret{% endif %}" />
+      <div class="hint">Leave blank to keep the existing value.</div>
+      {% if errors.slack_client_secret %}<div class="field-error">{{ errors.slack_client_secret }}</div>{% endif %}
+    </div>
+    <div class="field">
+      <label>Redirect URL <span style="font-size:11px;color:var(--text-muted)">(register this in your Slack OAuth app)</span></label>
+      <div class="url-row">
+        <span class="mono" id="slack-redirect-url">—</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyRedirect('slack-redirect-url', this)">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-16">
+    <button type="submit" class="btn btn-primary">Save Settings</button>
+    <span id="save-status" style="margin-left:12px;font-size:13px;display:none"></span>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Compute and display redirect URLs from base_url field (live)
+function updateRedirectUrls() {
+  const base = document.getElementById('base_url').value.trim().replace(/\/$/, '');
+  const origin = base || window.location.origin;
+  document.getElementById('linear-redirect-url').textContent = origin + '/oauth/linear/callback';
+  document.getElementById('slack-redirect-url').textContent  = origin + '/oauth/slack/callback';
+}
+
+// Auto-populate base_url from browser origin if not saved server-side
+(function() {
+  const field = document.getElementById('base_url');
+  if (!field.value) field.value = window.location.origin;
+  updateRedirectUrls();
+  field.addEventListener('input', updateRedirectUrls);
+})();
+
+function copyRedirect(id, btn) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+document.getElementById('settings-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const status = document.getElementById('save-status');
+  const form = e.target;
+  const data = {};
+  new FormData(form).forEach((v, k) => { if (v) data[k] = v; });
+  ['base_url', 'linear_client_id', 'slack_client_id'].forEach(k => {
+    data[k] = form.elements[k].value;
+  });
+
+  status.style.display = 'inline';
+  status.style.color = 'var(--text-muted)';
+  status.textContent = 'Saving…';
+
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (json.success) {
+      status.style.color = 'var(--success)';
+      status.textContent = 'Saved ✓';
+      setTimeout(() => location.reload(), 800);
+    } else {
+      status.style.color = 'var(--error)';
+      status.textContent = json.error || 'Save failed';
+    }
+  } catch {
+    status.style.color = 'var(--error)';
+    status.textContent = 'Network error';
+  }
+});
+</script>
+{% endblock %}
