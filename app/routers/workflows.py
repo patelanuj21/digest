@@ -11,7 +11,6 @@ from app.database import get_db
 from app.services.digest import (
     ConnectionNotFoundError,
     DigestParams,
-    UntriagedDefinition,
     run_linear_slack_digest,
 )
 from app.services.linear_client import (
@@ -25,19 +24,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-class UntriagedDefinitionBody(BaseModel):
-    include_unassigned: bool = True
-    include_no_priority: bool = True
-    state_names: list[str] = ["Triage", "Backlog"]
-
-
 class WorkflowRequest(BaseModel):
     team_key: str
     slack_channel: str
     limit: int = 20
-    include_untriaged: bool = True
+    include_unassigned: bool = True
     include_assignment_summary: bool = True
-    untriaged_definition: UntriagedDefinitionBody = UntriagedDefinitionBody()
 
 
 def _error_response(error_type: str, message: str, http_status: int) -> JSONResponse:
@@ -62,13 +54,8 @@ async def trigger_workflow(
         team_key=body.team_key,
         slack_channel=body.slack_channel,
         limit=body.limit,
-        include_untriaged=body.include_untriaged,
+        include_unassigned=body.include_unassigned,
         include_assignment_summary=body.include_assignment_summary,
-        untriaged_definition=UntriagedDefinition(
-            include_unassigned=body.untriaged_definition.include_unassigned,
-            include_no_priority=body.untriaged_definition.include_no_priority,
-            state_names=body.untriaged_definition.state_names,
-        ),
     )
 
     try:
@@ -95,7 +82,7 @@ async def trigger_workflow(
         "team_key": result.team_key,
         "slack_channel": result.slack_channel,
         "issues_pulled": result.issues_pulled,
-        "untriaged_count": result.untriaged_count,
+        "unassigned_count": result.unassigned_count,
         "assignment_summary": result.assignment_summary,
         "slack_posted": result.slack_posted,
         "message_ts": result.message_ts,
