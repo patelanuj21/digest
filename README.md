@@ -1,6 +1,6 @@
 # Digest
 
-A FastAPI app that connects Linear and Slack via OAuth 2.0. Hit one endpoint and it pulls open issues from a Linear team, builds an untriaged + assignment summary digest, and posts it to a Slack channel.
+A FastAPI app that connects Linear and Slack via OAuth 2.0. Hit one endpoint and it pulls open issues from a Linear team, builds an unassigned + assignment summary digest, and posts it to a Slack channel.
 
 ---
 
@@ -127,13 +127,8 @@ curl -X POST http://localhost:8000/api/workflows/linear-slack-digest \
     "team_key": "ENG",
     "slack_channel": "#engineering",
     "limit": 50,
-    "include_untriaged": true,
-    "include_assignment_summary": true,
-    "untriaged_definition": {
-      "include_unassigned": true,
-      "include_no_priority": true,
-      "state_names": ["Triage", "Backlog"]
-    }
+    "include_unassigned": true,
+    "include_assignment_summary": true
   }'
 ```
 
@@ -144,13 +139,14 @@ curl -X POST http://localhost:8000/api/workflows/linear-slack-digest \
 | `team_key` | string | required | Linear team key (e.g. `ENG`) |
 | `slack_channel` | string | required | Slack channel (e.g. `#engineering`) |
 | `limit` | int | `20` | Max issues to fetch from Linear |
-| `include_untriaged` | bool | `true` | Include untriaged issues section |
-| `include_assignment_summary` | bool | `true` | Include per-assignee count |
-| `untriaged_definition.include_unassigned` | bool | `true` | Count unassigned issues as untriaged |
-| `untriaged_definition.include_no_priority` | bool | `true` | Count no-priority issues as untriaged |
-| `untriaged_definition.state_names` | list | `["Triage", "Backlog"]` | States that count as untriaged |
+| `include_unassigned` | bool | `true` | Include the unassigned-issues section |
+| `include_assignment_summary` | bool | `true` | Include the per-engineer assignment summary |
+
+> Completed and canceled issues are always dropped before counts are built, so the digest reflects active work only.
 
 **Success response:**
+
+`assignment_summary` is keyed by assignee, each with a `total` and a `by_priority` breakdown. Unassigned issues are reported separately via `unassigned_count` and are not included in the summary.
 
 ```json
 {
@@ -158,11 +154,16 @@ curl -X POST http://localhost:8000/api/workflows/linear-slack-digest \
   "team_key": "ENG",
   "slack_channel": "#engineering",
   "issues_pulled": 23,
-  "untriaged_count": 5,
+  "unassigned_count": 5,
   "assignment_summary": {
-    "Alice": 8,
-    "Bob": 6,
-    "Unassigned": 5
+    "Alice": {
+      "total": 8,
+      "by_priority": { "Urgent": 2, "High": 3, "Medium": 3 }
+    },
+    "Bob": {
+      "total": 6,
+      "by_priority": { "High": 1, "Low": 5 }
+    }
   },
   "slack_posted": true,
   "message_ts": "1718650000.000100",
@@ -184,4 +185,17 @@ curl http://localhost:8000/api/connections/slack
 # Disconnect a provider
 curl -X DELETE http://localhost:8000/api/connections/slack
 ```
+
+---
+
+## Assumptions
+
+- **Single tenant, no users/orgs.** The app holds one Linear connection and one Slack connection at a time — connecting a provider again replaces the previous connection. There is no concept of users, tenants, or auth on the app itself.
+- **The workflow endpoint is unauthenticated.** `POST /api/workflows/linear-slack-digest` is open so it can be triggered easily as a demo webhook. A production deployment would put a shared secret or signature check in front of it.
+- **Bring-your-own-credentials.** You supply your own Linear and Slack OAuth app credentials via the Settings UI; nothing is hardcoded and no redeploy is needed to point at a different workspace.
+- **The Slack bot must be invited to the target channel** (`/invite @your-bot`) before posting, and the channel is passed per request.
+- **Counts reflect active work.** Issues in `completed` or `canceled` states are dropped before building the digest; only currently-open issues are counted.
+- **"Unassigned" vs "assigned" is the only triage signal.** Unassigned open issues are surfaced as the action list; assigned issues feed the per-engineer summary. There is no configurable triage/state definition.
+- **Slack bot tokens don't expire**, so no refresh logic is implemented for Slack; Linear tokens are obtained via OAuth + PKCE.
+- **SQLite + local file storage.** State lives in a single SQLite file (`./data/app.db`); credentials are encrypted at rest with Fernet. This suits a single-instance deployment, not horizontal scaling.
 
